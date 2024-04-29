@@ -1,14 +1,15 @@
 const express = require('express');
 const router = express.Router();
-const usersController = require('../../controllers/usersController');
+const UsersController = require('../../controllers/usersController');
 
 router.route('/')
-    .get(usersController.getAllUsers)
-    .post(usersController.createNewUser)
-    .put(usersController.updateUser)
-    .delete(usersController.deleteUser);
+    .get(UsersController.getAllUsers)
+    .post(UsersController.createNewUser);
+    
 
 router.route('/:mail')
-    .get(usersController.getUser);
+    .get(UsersController.getUser)
+    .put(UsersController.updateUser)
+    .delete(UsersController.deleteUser);
 
 module.exports = router;

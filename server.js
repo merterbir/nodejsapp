@@ -25,7 +25,7 @@ app.use(express.urlencoded({ extended: false }));
 
 app.use(express.json());
 
-app.use('/users', require('./routes/api/users'));
+app.use('/', require('./routes/api/users'));
 
 app.use(errorHandler);
 
