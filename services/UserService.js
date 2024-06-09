@@ -16,14 +16,23 @@ class UserService {
         let user = {};
 
         if (userName) {
-            user = await UsersRepository.getUser(userName);
+            try {  
+                user = await UsersRepository.getUser(userName);
+                res.status(200).json(user);
+            } catch (error) {
+                res.status(400).json({ error: error.message });
+            }
         }
 
         return user;
     }
 
     async getAllUsers () {
-        return await UsersRepository.getAllUsers();
+        try {
+            return await UsersRepository.getAllUsers();
+        } catch (error) {
+            res.status(400).json({ error: error.message });
+        }
     }
 
     /**
@@ -32,7 +41,11 @@ class UserService {
      * @returns {Promise<Object>}
      */
     async createNewUser (request) {
-        return await UsersRepository.createNewUser(request);
+        try {
+            return await UsersRepository.createNewUser(request);
+        } catch (error) {
+            res.status(400).json({ error: error.message });
+        }
     }
 
     /**
@@ -48,7 +61,12 @@ class UserService {
         let user = {};
 
         if (userName) {
-            user = await UsersRepository.updateUser(request, userName);
+            try {
+                user = await UsersRepository.updateUser(request, userName);
+                res.status(200).json(user);
+            } catch (error) {
+                res.status(400).json({ error: error.message });
+            }
         }
 
         return user;
@@ -67,11 +85,29 @@ class UserService {
         let user = {};
 
         if (userName) {
-            user = await UsersRepository.deleteUser(userName);
+            try {
+                user = await UsersRepository.deleteUser(userName);
+                res.status(201).json(user);
+            } catch (error) {
+                res.status(400).json({ error: error.message });
+            }
         }
 
         return user;
-    }  
+    }
+
+    /**
+     * @async
+     * @param {Object} request
+     * @returns {Promise<Object>}
+     */
+    async balanceTransfer (request) {
+        try {
+            return await UsersRepository.balanceTransfer(request);
+        } catch (error) {
+            res.status(400).json({ error: error.message });
+        }
+    }    
 }
 
 module.exports = new UserService();

@@ -185,6 +185,111 @@ class Users {
             });
         })
     }
+
+    /**
+     * @param request
+     * @returns {Promise<Object[]>}
+     */
+    balanceTransfer(request) {
+        return new Promise((resolve, reject) => {
+            const senderMail = request.body.senderMail;
+            const receiverMail = request.body.receiverMail;
+            const amount = request.body.amount;
+    
+            if (!senderMail || !receiverMail || !amount) {
+                resolve({ status: 400, message: 'Sender mail, receiver mail, and amount are required.' });
+                return;
+            }
+
+            if (senderMail === receiverMail) {
+                resolve({ status: 400, message: 'Sender mail and receiver mail can not be same.' });
+                return;
+            }
+    
+            const connection = this.databaseConnect();
+    
+            connection.query('SELECT * FROM users WHERE mail = ?', [senderMail], (err, senderResults) => {
+                if (err) {
+                    connection.end();
+                    resolve({ status: 500, message: 'Error retrieving sender information.' });
+                    return;
+                }
+    
+                if (senderResults.length === 0) {
+                    connection.end();
+                    resolve({ status: 404, message: 'Sender not found.' });
+                    return;
+                }
+    
+                const sender = senderResults[0];
+                if (sender.balance < amount) {
+                    connection.end();
+                    resolve({ status: 400, message: 'Insufficient balance.' });
+                    return;
+                }
+    
+                connection.query('SELECT * FROM users WHERE mail = ?', [receiverMail], (err, receiverResults) => {
+                    if (err) {
+                        connection.end();
+                        resolve({ status: 500, message: 'Error retrieving receiver information.' });
+                        return;
+                    }
+    
+                    if (receiverResults.length === 0) {
+                        connection.end();
+                        resolve({ status: 404, message: 'Receiver not found.' });
+                        return;
+                    }
+    
+                    const receiver = receiverResults[0];
+    
+                    const newSenderBalance = sender.balance - amount;
+                    const newReceiverBalance = receiver.balance + amount;
+    
+                    connection.beginTransaction(err => {
+                        if (err) {
+                            connection.end();
+                            resolve({ status: 500, message: 'Error starting transaction.' });
+                            return;
+                        }
+    
+                        connection.query('UPDATE users SET balance = ? WHERE mail = ?', [newSenderBalance, senderMail], (err, updateSenderResult) => {
+                            if (err) {
+                                connection.rollback(() => {
+                                    connection.end();
+                                    resolve({ status: 500, message: 'Error updating sender balance.' });
+                                });
+                                return;
+                            }
+    
+                            connection.query('UPDATE users SET balance = ? WHERE mail = ?', [newReceiverBalance, receiverMail], (err, updateReceiverResult) => {
+                                if (err) {
+                                    connection.rollback(() => {
+                                        connection.end();
+                                        resolve({ status: 500, message: 'Error updating receiver balance.' });
+                                    });
+                                    return;
+                                }
+    
+                                connection.commit(err => {
+                                    if (err) {
+                                        connection.rollback(() => {
+                                            connection.end();
+                                            resolve({ status: 500, message: 'Error committing transaction.' });
+                                        });
+                                        return;
+                                    }
+    
+                                    connection.end();
+                                    resolve({ status: 200, message: 'Transfer successful.' });
+                                });
+                            });
+                        });
+                    });
+                });
+            });
+        })
+    }
 }
 
 module.exports = new Users();

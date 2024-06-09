@@ -24,6 +24,10 @@ class UsersController {
     async deleteUser (request, response) {
         response.status(200).send(await UserService.deleteUser(request));
     }
+
+    async balanceTransfer (request, response) {
+        response.status(200).send(await UserService.balanceTransfer(request));
+    }
 }
 
 module.exports = new UsersController();

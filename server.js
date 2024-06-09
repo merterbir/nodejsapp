@@ -4,6 +4,8 @@ const path = require('path');
 const cors = require('cors');
 const { logger } = require('./middleware/logEvents');
 const errorHandler = require('./middleware/errorHandler');
+const CronController = require('./controllers/CronController');
+
 const PORT = process.env.PORT || 3500;
 
 app.use(logger);
@@ -26,7 +28,7 @@ app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
 
 app.use('/', require('./routes/api/users'));
-
+CronController.getUsersBalance();
 app.use(errorHandler);
 
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
