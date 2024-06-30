@@ -29,54 +29,68 @@ class Users {
     /**
      * @returns {Promise<Object[]>}
      */
-    getUser(mail) {
+    getUser(mail, request) {
         return new Promise((resolve, reject) => {
             const databaseConnection = this.databaseConnect();
     
             const sql = 'SELECT * FROM users WHERE mail = ?';
             const values = [mail];
+            const requesterMail = request.body.requesterMail;
+        
+            this.getUserRole(requesterMail).then(userRole => {
+                if (senderMail === mail || userRole === 'Admin') {
+                    databaseConnection.query(sql, values, (err, results) => {
+                        if (err) {
+                            resolve({ status: 500, message: `${err.stack}` });
+                            return;
+                        }
+                        if (results.length === 0) {
+                            resolve({ status: 404, message: `User not found` });
+                            return;
+                        }
     
-            databaseConnection.query(sql, values, (err, results) => {
-                if (err) {
-                    resolve({ status: 500, message: `${err.stack}` });
-                    return;
+                        resolve({ status: 200, data: results[0] });
+                    });
+                } else {
+                    resolve({ status: 403, message: `Permission denied.` });
+                    databaseConnection.end();
                 }
-                if (results.length === 0) {
-                    resolve({ status: 404, message: `Users not found` });
-                    return;
-                }
-                if (!results[0]) {
-                    resolve({ status: 404, message: `${mail} not found` });
-                    return;
-                }
-    
-                resolve(results[0]);
+            }).catch(error => {
+                resolve({ status: 500, message: `Error retrieving user role: ${error}` });
+                databaseConnection.end();
             });
-    
-            databaseConnection.end();
         });
     }
 
     /**
      * @returns {Promise<Object[]>}
      */
-    getAllUsers() {
+    getAllUsers(request) {
         return new Promise((resolve, reject) => {
             const databaseConnection = this.databaseConnect();
+            const requesterMail = request.body.requesterMail;
     
-            const sql = 'SELECT * FROM users';
+            this.getUserRole(requesterMail).then(userRole => {
+                if (userRole === 'Admin') {
+                    const sql = 'SELECT * FROM users';
     
-            databaseConnection.query(sql, (err, results) => {
-                if (err) {
-                    resolve({ status: 400, message: `${err.stack}` });
-                    return;
+                    databaseConnection.query(sql, (err, results) => {
+                        if (err) {
+                            resolve({ status: 400, message: `${err.stack}` });
+                            return;
+                        }
+            
+                        resolve(results);
+                    });
+                } else {
+                    resolve({ status: 403, message: `Permission denied.` });
+                    databaseConnection.end();
                 }
-    
-                resolve(results);
-            });
-    
-            databaseConnection.end();
-        })
+            }).catch(error => {
+                resolve({ status: 500, message: `Error retrieving user role: ${error}` });
+                databaseConnection.end();
+            });        
+        });
     }
 
     /**
@@ -91,7 +105,8 @@ class Users {
                 mail: request.body.mail,
                 firstName: request.body.firstName,
                 lastName: request.body.lastName,
-                balance:  request.body.balance ?? 0
+                balance:  request.body.balance ?? 0,
+                role: request.body.role ?? 'User',
             }
     
             if (!newUser.firstName || !newUser.lastName || !newUser.mail) {
@@ -99,8 +114,8 @@ class Users {
                 return;
             }
     
-            const sql = 'INSERT INTO users (mail, firstName, lastName, balance) VALUES (?, ?, ?, ?)';
-            const values = [newUser.mail, newUser.firstName, newUser.lastName, newUser.balance];
+            const sql = 'INSERT INTO users (mail, firstName, lastName, balance, role) VALUES (?, ?, ?, ?, ?)';
+            const values = [newUser.mail, newUser.firstName, newUser.lastName, newUser.balance, newUser.role];
             
             databaseConnection.query(sql, values, (err, result) => {
                 if (err) {
@@ -195,6 +210,7 @@ class Users {
             const senderMail = request.body.senderMail;
             const receiverMail = request.body.receiverMail;
             const amount = request.body.amount;
+            const requesterMail = request.body.requesterMail;
     
             if (!senderMail || !receiverMail || !amount) {
                 resolve({ status: 400, message: 'Sender mail, receiver mail, and amount are required.' });
@@ -206,89 +222,125 @@ class Users {
                 return;
             }
     
-            const connection = this.databaseConnect();
+            this.getUserRole(requesterMail).then(userRole => {
+                if (senderMail === requesterMail || userRole === 'Admin') {
+                    const connection = this.databaseConnect();
     
-            connection.query('SELECT * FROM users WHERE mail = ?', [senderMail], (err, senderResults) => {
-                if (err) {
-                    connection.end();
-                    resolve({ status: 500, message: 'Error retrieving sender information.' });
-                    return;
-                }
-    
-                if (senderResults.length === 0) {
-                    connection.end();
-                    resolve({ status: 404, message: 'Sender not found.' });
-                    return;
-                }
-    
-                const sender = senderResults[0];
-                if (sender.balance < amount) {
-                    connection.end();
-                    resolve({ status: 400, message: 'Insufficient balance.' });
-                    return;
-                }
-    
-                connection.query('SELECT * FROM users WHERE mail = ?', [receiverMail], (err, receiverResults) => {
-                    if (err) {
-                        connection.end();
-                        resolve({ status: 500, message: 'Error retrieving receiver information.' });
-                        return;
-                    }
-    
-                    if (receiverResults.length === 0) {
-                        connection.end();
-                        resolve({ status: 404, message: 'Receiver not found.' });
-                        return;
-                    }
-    
-                    const receiver = receiverResults[0];
-    
-                    const newSenderBalance = sender.balance - amount;
-                    const newReceiverBalance = receiver.balance + amount;
-    
-                    connection.beginTransaction(err => {
+                    connection.query('SELECT * FROM users WHERE mail = ?', [senderMail], (err, senderResults) => {
                         if (err) {
                             connection.end();
-                            resolve({ status: 500, message: 'Error starting transaction.' });
+                            resolve({ status: 500, message: 'Error retrieving sender information.' });
                             return;
                         }
-    
-                        connection.query('UPDATE users SET balance = ? WHERE mail = ?', [newSenderBalance, senderMail], (err, updateSenderResult) => {
+            
+                        if (senderResults.length === 0) {
+                            connection.end();
+                            resolve({ status: 404, message: 'Sender not found.' });
+                            return;
+                        }
+            
+                        const sender = senderResults[0];
+                        if (sender.balance < amount) {
+                            connection.end();
+                            resolve({ status: 400, message: 'Insufficient balance.' });
+                            return;
+                        }
+            
+                        connection.query('SELECT * FROM users WHERE mail = ?', [receiverMail], (err, receiverResults) => {
                             if (err) {
-                                connection.rollback(() => {
-                                    connection.end();
-                                    resolve({ status: 500, message: 'Error updating sender balance.' });
-                                });
+                                connection.end();
+                                resolve({ status: 500, message: 'Error retrieving receiver information.' });
                                 return;
                             }
-    
-                            connection.query('UPDATE users SET balance = ? WHERE mail = ?', [newReceiverBalance, receiverMail], (err, updateReceiverResult) => {
+            
+                            if (receiverResults.length === 0) {
+                                connection.end();
+                                resolve({ status: 404, message: 'Receiver not found.' });
+                                return;
+                            }
+            
+                            const receiver = receiverResults[0];
+            
+                            const newSenderBalance = sender.balance - amount;
+                            const newReceiverBalance = receiver.balance + amount;
+            
+                            connection.beginTransaction(err => {
                                 if (err) {
-                                    connection.rollback(() => {
-                                        connection.end();
-                                        resolve({ status: 500, message: 'Error updating receiver balance.' });
-                                    });
+                                    connection.end();
+                                    resolve({ status: 500, message: 'Error starting transaction.' });
                                     return;
                                 }
-    
-                                connection.commit(err => {
+            
+                                connection.query('UPDATE users SET balance = ? WHERE mail = ?', [newSenderBalance, senderMail], (err, updateSenderResult) => {
                                     if (err) {
                                         connection.rollback(() => {
                                             connection.end();
-                                            resolve({ status: 500, message: 'Error committing transaction.' });
+                                            resolve({ status: 500, message: 'Error updating sender balance.' });
                                         });
                                         return;
                                     }
-    
-                                    connection.end();
-                                    resolve({ status: 200, message: 'Transfer successful.' });
+            
+                                    connection.query('UPDATE users SET balance = ? WHERE mail = ?', [newReceiverBalance, receiverMail], (err, updateReceiverResult) => {
+                                        if (err) {
+                                            connection.rollback(() => {
+                                                connection.end();
+                                                resolve({ status: 500, message: 'Error updating receiver balance.' });
+                                            });
+                                            return;
+                                        }
+            
+                                        connection.commit(err => {
+                                            if (err) {
+                                                connection.rollback(() => {
+                                                    connection.end();
+                                                    resolve({ status: 500, message: 'Error committing transaction.' });
+                                                });
+                                                return;
+                                            }
+            
+                                            connection.end();
+                                            resolve({ status: 200, message: 'Transfer successful.' });
+                                        });
+                                    });
                                 });
                             });
                         });
                     });
-                });
+                } else {
+                    resolve({ status: 403, message: `Permission denied.` });
+                }
+            }).catch(error => {
+                resolve({ status: 500, message: `Error retrieving user role: ${error}` });
             });
         })
+    }
+
+    getUserRole(mail) {
+        return new Promise((resolve, reject) => {
+            const databaseConnection = this.databaseConnect();
+
+            const sql = 'SELECT role FROM users WHERE mail = ?';
+            const values = [mail];
+        
+            databaseConnection.query(sql, values, (err, results) => {
+                if (err) {
+                    resolve({ status: 500, message: `${err.stack}` });
+                    return;
+                }
+                if (results.length === 0) {
+                    resolve({ status: 404, message: `Users not found` });
+                    return;
+                }
+                if (!results[0]) {
+                    resolve({ status: 404, message: `${mail} not found` });
+                    return;
+                }
+
+                resolve(results[0].role);
+            });
+
+            databaseConnection.end();
+        });
     }
 }
 

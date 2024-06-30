@@ -11,14 +11,13 @@ class UserService {
      * @param {Object} request.params.mail
      * @returns {Promise<Object>}
      */
-    async getUser (request) {
+    async getUser (request, res) {
         const userName = request.params.mail;
         let user = {};
 
         if (userName) {
             try {  
-                user = await UsersRepository.getUser(userName);
-                res.status(200).json(user);
+                return await UsersRepository.getUser(userName, request);
             } catch (error) {
                 res.status(400).json({ error: error.message });
             }
@@ -27,9 +26,9 @@ class UserService {
         return user;
     }
 
-    async getAllUsers () {
+    async getAllUsers (request, res) {
         try {
-            return await UsersRepository.getAllUsers();
+            return await UsersRepository.getAllUsers(request);
         } catch (error) {
             res.status(400).json({ error: error.message });
         }
@@ -40,7 +39,7 @@ class UserService {
      * @param {Object} request
      * @returns {Promise<Object>}
      */
-    async createNewUser (request) {
+    async createNewUser (request, res) {
         try {
             return await UsersRepository.createNewUser(request);
         } catch (error) {
@@ -56,14 +55,13 @@ class UserService {
      * @param {Object} request
      * @returns {Promise<Object>}
      */
-    async updateUser (request) {
+    async updateUser (request, res) {
         const userName = request.params.mail;
         let user = {};
 
         if (userName) {
             try {
-                user = await UsersRepository.updateUser(request, userName);
-                res.status(200).json(user);
+                return await UsersRepository.updateUser(request, userName);
             } catch (error) {
                 res.status(400).json({ error: error.message });
             }
@@ -80,14 +78,12 @@ class UserService {
      * @param {Object} request
      * @returns {Promise<Object>}
      */
-    async deleteUser (request) {
+    async deleteUser (request, res) {
         const userName = request.params.mail;
-        let user = {};
 
         if (userName) {
             try {
-                user = await UsersRepository.deleteUser(userName);
-                res.status(201).json(user);
+                return await UsersRepository.deleteUser(userName);
             } catch (error) {
                 res.status(400).json({ error: error.message });
             }
@@ -101,7 +97,7 @@ class UserService {
      * @param {Object} request
      * @returns {Promise<Object>}
      */
-    async balanceTransfer (request) {
+    async balanceTransfer (request, res) {
         try {
             return await UsersRepository.balanceTransfer(request);
         } catch (error) {
