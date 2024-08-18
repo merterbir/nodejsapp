@@ -1,18 +1,23 @@
 const express = require('express');
 const router = express.Router();
 const UsersController = require('../../controllers/UsersController');
+const AuthController = require('../../controllers/AuthController');
+const verifyRoles = require('../../middleware/verifyRoles');
 
-router.route('/')
-    .get(UsersController.getAllUsers)
-    .post(UsersController.createNewUser);
+router.route('/',)
+    .get(verifyRoles('Admin'), UsersController.getAllUsers)
+    .post(verifyRoles('Admin'), UsersController.createNewUser);
     
 
 router.route('/:mail')
-    .get(UsersController.getUser)
-    .put(UsersController.updateUser)
-    .delete(UsersController.deleteUser);
+    .get(verifyRoles('Admin', 'User'), UsersController.getUser)
+    .put(verifyRoles('Admin'), UsersController.updateUser)
+    .delete(verifyRoles('Admin'), UsersController.deleteUser);
 
 router.route('/transfer')
-    .post(UsersController.balanceTransfer);
+    .post(verifyRoles('Admin', 'User'), UsersController.balanceTransfer);
+
+router.route('/login')
+    .post(AuthController.login);
 
 module.exports = router;

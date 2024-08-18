@@ -2,3 +2,5 @@
 20240330	23:28:35	14343b2b-9226-4145-9021-a89dfb719d88	ReferenceError: results is not defined
 20240330	23:28:54	216c9477-f48b-4583-b79f-708d130a626a	ReferenceError: results is not defined
 20240630	08:10:45	95c90968-2db1-4cbf-90ac-39e14b567199	SyntaxError: Expected double-quoted property name in JSON at position 154
+20240818	03:42:10	ee8b7139-5a15-4a36-ae8c-6f720c112d41	ReferenceError: jwt is not defined
+20240818	03:44:41	6623cb93-49fb-43c9-9eba-6be749168be7	TypeError: Cannot read properties of undefined (reading 'map')
