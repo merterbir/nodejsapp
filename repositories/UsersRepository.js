@@ -85,15 +85,16 @@ class Users {
                 lastName: request.body.lastName,
                 balance:  request.body.balance ?? 0,
                 role: request.body.role ?? 'User',
+                password: request.body.password
             }
     
-            if (!newUser.firstName || !newUser.lastName || !newUser.mail) {
-                resolve({ status: 400, message: 'Mail, first and last names are required.' });
+            if (!newUser.firstName || !newUser.lastName || !newUser.mail || !newUser.password) {
+                resolve({ status: 400, message: 'Mail, firsti password and last names are required.' });
                 return;
             }
     
-            const sql = 'INSERT INTO users (mail, firstName, lastName, balance, role) VALUES (?, ?, ?, ?, ?)';
-            const values = [newUser.mail, newUser.firstName, newUser.lastName, newUser.balance, newUser.role];
+            const sql = 'INSERT INTO users (mail, firstName, lastName, balance, role, password) VALUES (?, ?, ?, ?, ?, ?)';
+            const values = [newUser.mail, newUser.firstName, newUser.lastName, newUser.balance, newUser.role, newUser.password];
             
             databaseConnection.query(sql, values, (err, result) => {
                 if (err) {
