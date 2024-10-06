@@ -9,10 +9,10 @@ class Users {
         const mysql = require('mysql2');
     
         const connection = mysql.createConnection({
-            host: 'localhost',
-            user: 'root',
-            password: '130669',
-            database: 'ledger_db'
+            host: 'nodedatabase.c1e8q0k8opto.eu-north-1.rds.amazonaws.com',
+            user: 'admin',
+            password: 'Test123+',
+            database: 'nodedatabase'
         });
     
         connection.connect((err) => {
